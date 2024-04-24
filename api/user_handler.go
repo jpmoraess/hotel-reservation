@@ -38,7 +38,7 @@ func (h *UserHandler) HandleDeleteUser(c *fiber.Ctx) error {
 	if err := h.userStore.DeleteUser(c.Context(), userID); err != nil {
 		return err
 	}
-	return c.SendStatus(204)
+	return c.SendStatus(fiber.StatusNoContent)
 }
 
 func (h *UserHandler) HandlePostUser(c *fiber.Ctx) error {
@@ -47,8 +47,7 @@ func (h *UserHandler) HandlePostUser(c *fiber.Ctx) error {
 		return err
 	}
 	if err := input.Validate(c.Context()); err != nil {
-		c.SendStatus(400)
-		return c.JSON(err)
+		return c.Status(fiber.StatusOK).JSON(err)
 	}
 	user, err := types.NewUserFromInput(input)
 	if err != nil {
@@ -68,7 +67,7 @@ func (h *UserHandler) HandleGetUser(c *fiber.Ctx) error {
 	user, err := h.userStore.GetUserByID(c.Context(), id)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
-			return c.SendStatus(404)
+			return c.SendStatus(fiber.StatusNotFound)
 		}
 		return err
 	}
