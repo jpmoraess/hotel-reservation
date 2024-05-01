@@ -13,7 +13,8 @@ const hotelsColl = "hotels"
 
 type HotelStore interface {
 	InsertHotel(context.Context, *types.Hotel) (*types.Hotel, error)
-	Update(ctx context.Context, id string, roomsId []primitive.ObjectID) error
+	Update(context.Context, bson.M, bson.M) error
+	GetHotels(context.Context, bson.M) ([]*types.Hotel, error)
 }
 
 type MongoHotelStore struct {
@@ -21,10 +22,10 @@ type MongoHotelStore struct {
 	coll   *mongo.Collection
 }
 
-func NewMongoHotelStore(client *mongo.Client, dbname string) *MongoHotelStore {
+func NewMongoHotelStore(client *mongo.Client) *MongoHotelStore {
 	return &MongoHotelStore{
 		client: client,
-		coll:   client.Database(dbname).Collection(hotelsColl),
+		coll:   client.Database(DBNAME).Collection(hotelsColl),
 	}
 }
 
@@ -37,15 +38,19 @@ func (s *MongoHotelStore) InsertHotel(ctx context.Context, hotel *types.Hotel) (
 	return hotel, nil
 }
 
-func (s *MongoHotelStore) Update(ctx context.Context, id string, roomsId []primitive.ObjectID) error {
-	oid, err := primitive.ObjectIDFromHex(id)
+func (s *MongoHotelStore) Update(ctx context.Context, filter bson.M, update bson.M) error {
+	_, err := s.coll.UpdateOne(ctx, filter, update)
+	return err
+}
+
+func (s *MongoHotelStore) GetHotels(ctx context.Context, filter bson.M) ([]*types.Hotel, error) {
+	cur, err := s.coll.Find(ctx, filter)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	update := bson.M{"$set": bson.M{"rooms": roomsId}}
-	_, err = s.coll.UpdateOne(ctx, bson.M{"_id": oid}, update)
-	if err != nil {
-		return err
+	var hotels []*types.Hotel
+	if err := cur.All(ctx, &hotels); err != nil {
+		return nil, err
 	}
-	return nil
+	return hotels, nil
 }
